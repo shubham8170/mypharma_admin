@@ -1,6 +1,71 @@
-import { dashboardStats, medicines, orders } from "../data/mock";
+import { useEffect, useState } from "react";
+import { getDashboardSummary, getMedicines, getOrders } from "../api/admin";
+import { UnauthorizedError } from "../api/client";
+import { useAuth } from "../auth/AuthContext";
+
+function toTag(value: string) {
+  return value.toLowerCase().replace(/_/g, "-");
+}
 
 export function DashboardPage() {
+  const { token, logout } = useAuth();
+  const [summary, setSummary] = useState<{
+    totalRevenue: number;
+    totalOrders: number;
+    lowStockAlerts: number;
+    pendingDeliveries: number;
+    revenueDeltaPct: number;
+    ordersDeltaPct: number;
+    stockDeltaPct: number;
+    deliveryDeltaPct: number;
+  } | null>(null);
+  const [medicines, setMedicines] = useState<
+    Array<{ id: string; name: string; sku: string; category: string; stock: number; price: number; status: string }>
+  >([]);
+  const [orders, setOrders] = useState<
+    Array<{ id: string; customerName: string; amount: number; paymentStatus: string; fulfillmentStatus: string }>
+  >([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!token) return;
+    const controller = new AbortController();
+    const load = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const [sum, meds, ords] = await Promise.all([
+          getDashboardSummary(token, controller.signal),
+          getMedicines(token, { page: 1, limit: 4 }, controller.signal),
+          getOrders(token, { page: 1, limit: 5 }, controller.signal),
+        ]);
+        setSummary(sum);
+        setMedicines(meds.items);
+        setOrders(ords.items);
+      } catch (e) {
+        if (e instanceof UnauthorizedError) {
+          logout();
+          return;
+        }
+        setError(e instanceof Error ? e.message : "Failed to load dashboard");
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+    return () => controller.abort();
+  }, [token, logout]);
+
+  const stats = summary
+    ? [
+        { label: "Total Revenue", value: `Rs ${summary.totalRevenue.toLocaleString("en-IN")}`, delta: `${summary.revenueDeltaPct}%` },
+        { label: "Total Orders", value: `${summary.totalOrders.toLocaleString("en-IN")}`, delta: `${summary.ordersDeltaPct}%` },
+        { label: "Low Stock Alerts", value: `${summary.lowStockAlerts}`, delta: `${summary.stockDeltaPct}%` },
+        { label: "Pending Deliveries", value: `${summary.pendingDeliveries}`, delta: `${summary.deliveryDeltaPct}%` },
+      ]
+    : [];
+
   return (
     <>
       <header className="page-head">
@@ -13,12 +78,15 @@ export function DashboardPage() {
         </button>
       </header>
 
+      {error ? <p className="api-error">{error}</p> : null}
+      {loading ? <p className="api-loading">Loading dashboard...</p> : null}
+
       <section className="stats-grid" aria-label="Key metrics">
-        {dashboardStats.map((item) => (
+        {stats.map((item) => (
           <article key={item.label} className="stat-card">
             <span>{item.label}</span>
             <strong>{item.value}</strong>
-            <small className={item.positive ? "positive" : "negative"}>{item.delta}</small>
+            <small className={item.delta.startsWith("-") ? "negative" : "positive"}>{item.delta}</small>
           </article>
         ))}
       </section>
@@ -41,7 +109,7 @@ export function DashboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {medicines.slice(0, 4).map((medicine) => (
+                {medicines.map((medicine) => (
                   <tr key={medicine.id}>
                     <td>{medicine.name}</td>
                     <td>{medicine.sku}</td>
@@ -49,7 +117,7 @@ export function DashboardPage() {
                     <td>{medicine.stock}</td>
                     <td>Rs {medicine.price}</td>
                     <td>
-                      <span className={`tag ${medicine.status.replace(/\s+/g, "-").toLowerCase()}`}>
+                      <span className={`tag ${toTag(medicine.status)}`}>
                         {medicine.status}
                       </span>
                     </td>
@@ -82,12 +150,12 @@ export function DashboardPage() {
                     <td>{order.customerName}</td>
                     <td>Rs {order.amount.toLocaleString("en-IN")}</td>
                     <td>
-                      <span className={`tag ${order.paymentStatus.toLowerCase()}`}>
+                      <span className={`tag ${toTag(order.paymentStatus)}`}>
                         {order.paymentStatus}
                       </span>
                     </td>
                     <td>
-                      <span className={`tag ${order.fulfillmentStatus.toLowerCase()}`}>
+                      <span className={`tag ${toTag(order.fulfillmentStatus)}`}>
                         {order.fulfillmentStatus}
                       </span>
                     </td>

@@ -1,4 +1,4 @@
-import { apiUrl } from "./client";
+import { apiRequest } from "./client";
 
 export type AuthUser = {
   id: string;
@@ -12,45 +12,27 @@ export type LoginResponse = {
   user: AuthUser;
 };
 
-const DEMO_EMAIL = "admin@mypharma.com";
-const DEMO_PASSWORD = "admin123";
-
-function hasCustomApiBase(): boolean {
-  return Boolean(import.meta.env.VITE_API_BASE_URL?.trim());
-}
-
 export async function loginRequest(email: string, password: string): Promise<LoginResponse> {
-  if (hasCustomApiBase()) {
-    const res = await fetch(apiUrl("/auth/login"), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
-    const body = (await res.json().catch(() => ({}))) as LoginResponse & { message?: string };
-    if (!res.ok) {
-      throw new Error(typeof body.message === "string" ? body.message : "Login failed");
-    }
-    if (!body.token || !body.user) {
-      throw new Error("Invalid response from server");
-    }
-    return { token: body.token, user: body.user };
-  }
-
-  await new Promise((r) => setTimeout(r, 400));
-
-  if (email.trim().toLowerCase() !== DEMO_EMAIL || password !== DEMO_PASSWORD) {
-    throw new Error(`Use demo account: ${DEMO_EMAIL} / ${DEMO_PASSWORD}`);
-  }
-
-  return {
-    token: "demo-jwt-token",
-    user: {
-      id: "usr_001",
-      name: "Admin User",
-      email: DEMO_EMAIL,
-      role: "SUPER_ADMIN",
-    },
-  };
+  return apiRequest<LoginResponse>("/auth/login", {
+    method: "POST",
+    body: { email, password },
+  });
 }
 
-export { DEMO_EMAIL, DEMO_PASSWORD };
+export async function meRequest(token: string): Promise<{ user: AuthUser }> {
+  return apiRequest<{ user: AuthUser }>("/auth/me", { token });
+}
+
+export async function refreshTokenRequest(token: string): Promise<{ token: string }> {
+  return apiRequest<{ token: string }>("/auth/refresh", {
+    method: "POST",
+    token,
+  });
+}
+
+export async function logoutRequest(token: string): Promise<{ message: string }> {
+  return apiRequest<{ message: string }>("/auth/logout", {
+    method: "POST",
+    token,
+  });
+}

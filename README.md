@@ -9,6 +9,19 @@ npm install
 npm run dev
 ```
 
+## Backend Integration
+
+- Default API base is `http://localhost:3000/api/v1`.
+- Override with env:
+
+```bash
+cp .env.example .env
+# edit VITE_API_BASE_URL if needed
+```
+
+- Login uses `POST /auth/login` with your admin credentials.
+- On app boot, auth state is validated using `GET /auth/me`.
+
 ## Build
 
 ```bash

@@ -1,7 +1,6 @@
-import { useState } from "react";
+import { type FormEvent, useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
-import { DEMO_EMAIL, DEMO_PASSWORD } from "../api/auth";
 
 export function LoginPage() {
   const { login, token, isReady } = useAuth();
@@ -18,7 +17,7 @@ export function LoginPage() {
     return <Navigate to={from === "/login" ? "/" : from} replace />;
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
     setSubmitting(true);
@@ -60,7 +59,7 @@ export function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              placeholder={DEMO_EMAIL}
+              placeholder="admin@mypharma.com"
             />
           </div>
           <div className="form-row">
@@ -81,17 +80,7 @@ export function LoginPage() {
             {submitting ? "Signing in…" : "Sign in"}
           </button>
 
-          <p className="login-hint">
-            Demo (no API URL): <strong>{DEMO_EMAIL}</strong> / <strong>{DEMO_PASSWORD}</strong>
-            <br />
-            With backend: set <code className="login-code">VITE_API_BASE_URL</code> to your server origin; app will POST{" "}
-            <code className="login-code">/auth/login</code>.
-          </p>
         </form>
-
-        <p className="login-footer">
-          <span className="login-link-muted">Forgot password?</span> — add a reset flow and API when ready.
-        </p>
       </div>
     </div>
   );

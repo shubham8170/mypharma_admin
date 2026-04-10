@@ -1,7 +1,43 @@
 import { PageToolbar } from "../components/PageToolbar";
-import { suppliers } from "../data/mock";
+import { useEffect, useState } from "react";
+import { getSuppliers } from "../api/admin";
+import { UnauthorizedError } from "../api/client";
+import { useAuth } from "../auth/AuthContext";
 
 export function SuppliersPage() {
+  const { token, logout } = useAuth();
+  const [search, setSearch] = useState("");
+  const [suppliers, setSuppliers] = useState<
+    Array<{ id: string; name: string; contactName: string | null; phone: string | null; email: string | null; address: string | null }>
+  >([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!token) return;
+    const controller = new AbortController();
+    const load = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await getSuppliers(token, controller.signal);
+        setSuppliers(data.items);
+      } catch (e) {
+        if (e instanceof UnauthorizedError) {
+          logout();
+          return;
+        }
+        setError(e instanceof Error ? e.message : "Failed to load suppliers");
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+    return () => controller.abort();
+  }, [token, logout]);
+
+  const filtered = suppliers.filter((s) => `${s.name} ${s.address ?? ""}`.toLowerCase().includes(search.toLowerCase()));
+
   return (
     <>
       <header className="page-head">
@@ -15,15 +51,25 @@ export function SuppliersPage() {
       </header>
 
       <PageToolbar>
-        <input className="input field-grow" type="search" placeholder="Search supplier, city…" aria-label="Search suppliers" />
+        <input
+          className="input field-grow"
+          type="search"
+          placeholder="Search supplier, city…"
+          aria-label="Search suppliers"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
         <button type="button" className="btn-secondary">
           Download contacts
         </button>
       </PageToolbar>
 
+      {error ? <p className="api-error">{error}</p> : null}
+      {loading ? <p className="api-loading">Loading suppliers...</p> : null}
+
       <article className="card">
         <div className="card-head">
-          <h2>Directory ({suppliers.length})</h2>
+          <h2>Directory ({filtered.length})</h2>
         </div>
         <div className="table-wrap">
           <table>
@@ -34,20 +80,18 @@ export function SuppliersPage() {
                 <th>Contact</th>
                 <th>Phone</th>
                 <th>Email</th>
-                <th>City</th>
-                <th>Open POs</th>
+                <th>Address</th>
               </tr>
             </thead>
             <tbody>
-              {suppliers.map((s) => (
+              {filtered.map((s) => (
                 <tr key={s.id}>
                   <td>{s.id}</td>
                   <td>{s.name}</td>
-                  <td>{s.contactName}</td>
-                  <td>{s.phone}</td>
-                  <td>{s.email}</td>
-                  <td>{s.city}</td>
-                  <td>{s.activeOrders}</td>
+                  <td>{s.contactName ?? "-"}</td>
+                  <td>{s.phone ?? "-"}</td>
+                  <td>{s.email ?? "-"}</td>
+                  <td>{s.address ?? "-"}</td>
                 </tr>
               ))}
             </tbody>

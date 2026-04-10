@@ -1,7 +1,51 @@
 import { PageToolbar } from "../components/PageToolbar";
-import { customers } from "../data/mock";
+import { useEffect, useMemo, useState } from "react";
+import { getCustomers } from "../api/admin";
+import { UnauthorizedError } from "../api/client";
+import { useAuth } from "../auth/AuthContext";
 
 export function CustomersPage() {
+  const { token, logout } = useAuth();
+  const [search, setSearch] = useState("");
+  const [type, setType] = useState("");
+  const [customers, setCustomers] = useState<
+    Array<{ id: string; name: string; type: "B2B" | "B2C"; phone: string | null; email: string | null; creditLimit: number }>
+  >([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!token) return;
+    const controller = new AbortController();
+    const load = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await getCustomers(token, controller.signal);
+        setCustomers(data.items);
+      } catch (e) {
+        if (e instanceof UnauthorizedError) {
+          logout();
+          return;
+        }
+        setError(e instanceof Error ? e.message : "Failed to load customers");
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+    return () => controller.abort();
+  }, [token, logout]);
+
+  const filtered = useMemo(() => {
+    return customers.filter((c) => {
+      const matchText = `${c.name} ${c.email ?? ""}`.toLowerCase().includes(search.toLowerCase());
+      const mappedType = c.type === "B2C" ? "Retail" : "B2B";
+      const matchType = !type || mappedType === type;
+      return matchText && matchType;
+    });
+  }, [customers, search, type]);
+
   return (
     <>
       <header className="page-head">
@@ -15,17 +59,27 @@ export function CustomersPage() {
       </header>
 
       <PageToolbar>
-        <input className="input field-grow" type="search" placeholder="Search name, email…" aria-label="Search customers" />
-        <select className="select" aria-label="Customer type">
+        <input
+          className="input field-grow"
+          type="search"
+          placeholder="Search name, email…"
+          aria-label="Search customers"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <select className="select" aria-label="Customer type" value={type} onChange={(e) => setType(e.target.value)}>
           <option value="">All types</option>
           <option>B2B</option>
           <option>Retail</option>
         </select>
       </PageToolbar>
 
+      {error ? <p className="api-error">{error}</p> : null}
+      {loading ? <p className="api-loading">Loading customers...</p> : null}
+
       <article className="card">
         <div className="card-head">
-          <h2>Accounts ({customers.length})</h2>
+          <h2>Accounts ({filtered.length})</h2>
         </div>
         <div className="table-wrap">
           <table>
@@ -37,21 +91,21 @@ export function CustomersPage() {
                 <th>Phone</th>
                 <th>Email</th>
                 <th>Credit limit</th>
-                <th>Last order</th>
               </tr>
             </thead>
             <tbody>
-              {customers.map((c) => (
+              {filtered.map((c) => (
                 <tr key={c.id}>
                   <td>{c.id}</td>
                   <td>{c.name}</td>
                   <td>
-                    <span className={`tag ${c.type === "B2B" ? "b2b" : "retail"}`}>{c.type}</span>
+                    <span className={`tag ${c.type === "B2B" ? "b2b" : "retail"}`}>
+                      {c.type === "B2B" ? "B2B" : "Retail"}
+                    </span>
                   </td>
-                  <td>{c.phone}</td>
-                  <td>{c.email}</td>
+                  <td>{c.phone ?? "-"}</td>
+                  <td>{c.email ?? "-"}</td>
                   <td>Rs {c.creditLimit.toLocaleString("en-IN")}</td>
-                  <td>{c.lastOrderAt}</td>
                 </tr>
               ))}
             </tbody>

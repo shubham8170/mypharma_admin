@@ -8,7 +8,8 @@ import {
   type ReactNode,
 } from "react";
 import type { AuthUser } from "../api/auth";
-import { loginRequest } from "../api/auth";
+import { loginRequest, logoutRequest, meRequest, refreshTokenRequest } from "../api/auth";
+import { UnauthorizedError } from "../api/client";
 
 const TOKEN_KEY = "mypharma_token";
 const USER_KEY = "mypharma_user";
@@ -17,7 +18,7 @@ type AuthState = {
   token: string | null;
   user: AuthUser | null;
   isReady: boolean;
-  login: (email: string, password: string) => Promise<void>
+  login: (email: string, password: string) => Promise<void>;
   logout: () => void;
 };
 
@@ -29,20 +30,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    try {
-      const t = localStorage.getItem(TOKEN_KEY);
-      const u = localStorage.getItem(USER_KEY);
-      if (t && u) {
+    const hydrate = async () => {
+      try {
+        const t = localStorage.getItem(TOKEN_KEY);
+        const u = localStorage.getItem(USER_KEY);
+        if (!t || !u) return;
         setToken(t);
         setUser(JSON.parse(u) as AuthUser);
+        const me = await meRequest(t);
+        setUser(me.user);
+        localStorage.setItem(USER_KEY, JSON.stringify(me.user));
+      } catch {
+        localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem(USER_KEY);
+        setToken(null);
+        setUser(null);
+      } finally {
+        setIsReady(true);
       }
-    } catch {
-      localStorage.removeItem(TOKEN_KEY);
-      localStorage.removeItem(USER_KEY);
-    } finally {
-      setIsReady(true);
-    }
+    };
+    hydrate();
   }, []);
+
+  useEffect(() => {
+    if (!token) return;
+    const id = window.setInterval(async () => {
+      try {
+        const refreshed = await refreshTokenRequest(token);
+        setToken(refreshed.token);
+        localStorage.setItem(TOKEN_KEY, refreshed.token);
+      } catch (error) {
+        if (error instanceof UnauthorizedError) {
+          localStorage.removeItem(TOKEN_KEY);
+          localStorage.removeItem(USER_KEY);
+          setToken(null);
+          setUser(null);
+        }
+      }
+    }, 10 * 60 * 1000);
+    return () => window.clearInterval(id);
+  }, [token]);
 
   const login = useCallback(async (email: string, password: string) => {
     const res = await loginRequest(email, password);
@@ -53,11 +80,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(() => {
+    if (token) {
+      logoutRequest(token).catch(() => undefined);
+    }
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
     setToken(null);
     setUser(null);
-  }, []);
+  }, [token]);
 
   const value = useMemo(
     () => ({

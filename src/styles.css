@@ -1174,3 +1174,21 @@ tbody tr:hover {
   color: var(--color-text-secondary);
   font-weight: 500;
 }
+
+.api-loading,
+.api-error {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 0.875rem;
+}
+
+.api-loading {
+  background: #eef2ff;
+  color: #3730a3;
+}
+
+.api-error {
+  background: #fef2f2;
+  color: #b91c1c;
+}
