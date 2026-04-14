@@ -11,12 +11,11 @@ npm run dev
 
 ## Backend Integration
 
-- Default API base is `http://localhost:3000/api/v1`.
-- Override with env:
+- The API base URL is read **only** from `VITE_API_BASE_URL` in `.env` (no fallback in code). Create your env file before running the app:
 
 ```bash
 cp .env.example .env
-# edit VITE_API_BASE_URL if needed
+# set VITE_API_BASE_URL to your API root, e.g. http://13.205.250.230/api
 ```
 
 - Login uses `POST /auth/login` with your admin credentials.

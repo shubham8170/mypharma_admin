@@ -14,8 +14,7 @@ This document defines the APIs needed by the React admin app and sample payloads
    If the server returns **401**, the app should clear the session and send the user back to `/login`.
 
 3. **Environment**  
-   - **Demo mode** (default): no backend. The UI uses mock data; login accepts only the demo credentials shown on the login page.  
-   - **Live API**: set `VITE_API_BASE_URL` to your API root (e.g. `https://api.example.com/api/v1` or `http://localhost:4000/api/v1`). The app will `POST` to `{VITE_API_BASE_URL}/auth/login`.
+   Set `VITE_API_BASE_URL` in `.env` to your API root (e.g. `http://13.205.250.230/api`). There is no in-code default; all requests use `{VITE_API_BASE_URL}/...` (e.g. `POST` to `{VITE_API_BASE_URL}/auth/login`).
 
 4. **Screen → API mapping (when you wire real data)**  
    | Screen      | Purpose | Primary APIs |
@@ -35,7 +34,7 @@ This document defines the APIs needed by the React admin app and sample payloads
 
 ## Base
 
-- Base URL: `/api/v1` (or full origin via `VITE_API_BASE_URL`)
+- Base URL: configured via `VITE_API_BASE_URL` (e.g. `http://13.205.250.230/api`); paths below are relative to that root.
 - Auth: `Authorization: Bearer <jwt-token>`
 - Content-Type: `application/json`
 

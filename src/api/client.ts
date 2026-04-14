@@ -1,11 +1,11 @@
-const DEFAULT_BASE = "http://localhost:3000/api/v1";
-
 export function getApiBaseUrl(): string {
   const env = import.meta.env.VITE_API_BASE_URL;
   if (typeof env === "string" && env.trim()) {
     return env.replace(/\/$/, "");
   }
-  return DEFAULT_BASE;
+  throw new Error(
+    "Missing VITE_API_BASE_URL. Copy .env.example to .env and set VITE_API_BASE_URL to your API root (e.g. http://13.205.250.230/api).",
+  );
 }
 
 export function apiUrl(path: string): string {
