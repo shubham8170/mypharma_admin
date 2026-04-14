@@ -62,6 +62,24 @@ export type SalesTrendPoint = {
   orders: number;
 };
 
+export type SubscriptionPlan = {
+  id: string;
+  name: string;
+  description: string | null;
+  amountInr: number;
+  razorpayPlanId: string;
+  billingInterval: "monthly" | "yearly";
+  trialDays: number;
+  isActive?: boolean;
+};
+
+export type SubscriptionConfig = {
+  amountInr: number;
+  razorpayPlanId: string;
+  billingInterval: "monthly" | "yearly";
+  trialDays: number;
+};
+
 export function getDashboardSummary(token: string, signal?: AbortSignal) {
   return apiRequest<DashboardSummary>("/dashboard/summary", { token, signal });
 }
@@ -138,5 +156,68 @@ export function getSalesTrend(
   return apiRequest<{ series: SalesTrendPoint[] }>(`/analytics/sales-trend?${q.toString()}`, {
     token,
     signal,
+  });
+}
+
+export function getSubscriptionPlans(token: string, signal?: AbortSignal) {
+  return apiRequest<{ items?: SubscriptionPlan[]; data?: SubscriptionPlan[] } | SubscriptionPlan[]>(
+    "/subscription-plans",
+    { token, signal }
+  );
+}
+
+export function createSubscriptionPlan(
+  token: string,
+  payload: {
+    name: string;
+    description: string;
+    amountInr: number;
+    razorpayPlanId: string;
+    billingInterval: "monthly" | "yearly";
+    trialDays: number;
+  }
+) {
+  return apiRequest<SubscriptionPlan>("/subscription-plans", {
+    method: "POST",
+    token,
+    body: payload,
+  });
+}
+
+export function updateSubscriptionPlan(
+  token: string,
+  planId: string,
+  payload: Partial<{
+    name: string;
+    description: string;
+    amountInr: number;
+    billingInterval: "monthly" | "yearly";
+    isActive: boolean;
+  }>
+) {
+  return apiRequest<SubscriptionPlan>(`/subscription-plans/${planId}`, {
+    method: "PATCH",
+    token,
+    body: payload,
+  });
+}
+
+export function getSubscriptionConfig(token: string, signal?: AbortSignal) {
+  return apiRequest<SubscriptionConfig>("/subscription-config", { token, signal });
+}
+
+export function updateSubscriptionConfig(
+  token: string,
+  payload: {
+    amountInr: number;
+    razorpayPlanId: string;
+    billingInterval: "monthly" | "yearly";
+    trialDays: number;
+  }
+) {
+  return apiRequest<SubscriptionConfig>("/subscription-config", {
+    method: "PATCH",
+    token,
+    body: payload,
   });
 }

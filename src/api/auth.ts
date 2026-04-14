@@ -13,10 +13,15 @@ export type LoginResponse = {
 };
 
 export async function loginRequest(email: string, password: string): Promise<LoginResponse> {
-  return apiRequest<LoginResponse>("/auth/login", {
+  const data = await apiRequest<{ token?: string; accessToken?: string; user: AuthUser }>("/auth/login", {
     method: "POST",
     body: { email, password },
   });
+  const token = data.token ?? data.accessToken;
+  if (!token) {
+    throw new Error("Login response missing token");
+  }
+  return { token, user: data.user };
 }
 
 export async function meRequest(token: string): Promise<{ user: AuthUser }> {
