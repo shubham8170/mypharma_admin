@@ -74,10 +74,39 @@ export type SubscriptionPlan = {
 };
 
 export type SubscriptionConfig = {
+  id?: string;
   amountInr: number;
+  currency?: string;
   razorpayPlanId: string;
   billingInterval: "monthly" | "yearly";
   trialDays: number;
+  isActive?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type AdminUser = {
+  id: string;
+  phoneNumber: string;
+  name: string | null;
+  role: string;
+  subscriptionStatus: "ACTIVE" | "EXPIRED" | string;
+  trialStartsAt: string | null;
+  trialEndsAt: string | null;
+  subscriptionEndsAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PharmacyAccessResponse = {
+  message: string;
+  pharmacy: {
+    id: string;
+    phoneNumber: string;
+    subscriptionStatus: "ACTIVE" | "EXPIRED" | string;
+    subscriptionEndsAt: string | null;
+    updatedAt: string;
+  };
 };
 
 export function getDashboardSummary(token: string, signal?: AbortSignal) {
@@ -208,14 +237,32 @@ export function getSubscriptionConfig(token: string, signal?: AbortSignal) {
 
 export function updateSubscriptionConfig(
   token: string,
-  payload: {
+  payload: Partial<{
     amountInr: number;
     razorpayPlanId: string;
     billingInterval: "monthly" | "yearly";
     trialDays: number;
-  }
+  }>
 ) {
   return apiRequest<SubscriptionConfig>("/subscription-config", {
+    method: "PATCH",
+    token,
+    body: payload,
+  });
+}
+
+export function getUsers(token: string, signal?: AbortSignal) {
+  return apiRequest<{ items: AdminUser[]; total: number }>("/users", { token, signal });
+}
+
+export function updatePharmacyAccess(
+  token: string,
+  pharmacyId: string,
+  payload: {
+    isActive: boolean;
+  }
+) {
+  return apiRequest<PharmacyAccessResponse>(`/pharmacies/${pharmacyId}/access`, {
     method: "PATCH",
     token,
     body: payload,

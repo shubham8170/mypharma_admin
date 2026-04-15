@@ -1,8 +1,11 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
+  getUsers,
   createSubscriptionPlan,
   getSubscriptionConfig,
   getSubscriptionPlans,
+  updatePharmacyAccess,
+  type AdminUser,
   type SubscriptionPlan,
   updateSubscriptionConfig,
   updateSubscriptionPlan,
@@ -33,7 +36,9 @@ export function SettingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [savingAccessUserId, setSavingAccessUserId] = useState<string | null>(null);
   const [refreshTick, setRefreshTick] = useState(0);
+  const [users, setUsers] = useState<AdminUser[]>([]);
 
   const [createPlan, setCreatePlan] = useState<PlanFormState>({
     name: "",
@@ -73,9 +78,10 @@ export function SettingsPage() {
       setLoadingPlans(true);
       setError(null);
       try {
-        const [planRes, configRes] = await Promise.all([
+        const [planRes, configRes, usersRes] = await Promise.all([
           getSubscriptionPlans(token, controller.signal),
           getSubscriptionConfig(token, controller.signal).catch(() => null),
+          getUsers(token, controller.signal).catch(() => ({ items: [], total: 0 })),
         ]);
         const normalizedPlans = Array.isArray(planRes)
           ? planRes
@@ -85,6 +91,7 @@ export function SettingsPage() {
               ? planRes.data
               : [];
         setPlans(normalizedPlans);
+        setUsers(usersRes.items ?? []);
         if (configRes) {
           setConfigForm({
             amountInr: String(configRes.amountInr ?? ""),
@@ -194,9 +201,6 @@ export function SettingsPage() {
     setSuccess(null);
     try {
       await updateSubscriptionConfig(token, {
-        amountInr: Number(configForm.amountInr),
-        razorpayPlanId: configForm.razorpayPlanId.trim(),
-        billingInterval: configForm.billingInterval,
         trialDays: Number(configForm.trialDays),
       });
       setSuccess("Subscription fallback config updated.");
@@ -209,6 +213,37 @@ export function SettingsPage() {
       setError(err instanceof Error ? err.message : "Failed to update fallback config");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleToggleAccess(user: AdminUser, isActive: boolean) {
+    if (!token) return;
+    setSavingAccessUserId(user.id);
+    setError(null);
+    setSuccess(null);
+    try {
+      const res = await updatePharmacyAccess(token, user.id, { isActive });
+      setSuccess(res.message);
+      setUsers((prev) =>
+        prev.map((item) =>
+          item.id === user.id
+            ? {
+                ...item,
+                subscriptionStatus: res.pharmacy.subscriptionStatus,
+                subscriptionEndsAt: res.pharmacy.subscriptionEndsAt,
+                updatedAt: res.pharmacy.updatedAt,
+              }
+            : item
+        )
+      );
+    } catch (err) {
+      if (err instanceof UnauthorizedError) {
+        logout();
+        return;
+      }
+      setError(err instanceof Error ? err.message : "Failed to update pharmacy access");
+    } finally {
+      setSavingAccessUserId(null);
     }
   }
 
@@ -312,7 +347,7 @@ export function SettingsPage() {
                 className="input"
                 type="number"
                 min="0"
-                required
+                disabled
                 value={configForm.amountInr}
                 onChange={(e) => setConfigForm((v) => ({ ...v, amountInr: e.target.value }))}
               />
@@ -321,7 +356,7 @@ export function SettingsPage() {
               <span>Razorpay Plan ID</span>
               <input
                 className="input"
-                required
+                disabled
                 value={configForm.razorpayPlanId}
                 onChange={(e) => setConfigForm((v) => ({ ...v, razorpayPlanId: e.target.value }))}
               />
@@ -330,6 +365,7 @@ export function SettingsPage() {
               <span>Billing interval</span>
               <select
                 className="select"
+                disabled
                 value={configForm.billingInterval}
                 onChange={(e) =>
                   setConfigForm((v) => ({ ...v, billingInterval: e.target.value as "monthly" | "yearly" }))
@@ -351,7 +387,7 @@ export function SettingsPage() {
               />
             </label>
             <button type="submit" className="btn-primary" disabled={saving}>
-              {saving ? "Saving..." : "Save config"}
+              {saving ? "Saving..." : "Update trial days"}
             </button>
           </form>
         </article>
@@ -394,6 +430,59 @@ export function SettingsPage() {
               {sortedPlans.length === 0 ? (
                 <tr>
                   <td colSpan={7}>No plans found.</td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+      </article>
+
+      <article className="card settings-card settings-table-card">
+        <div className="card-head">
+          <h2>Pharmacy user access</h2>
+          <p>GET /api/v1/users · PATCH /api/v1/pharmacies/:id/access</p>
+        </div>
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Phone</th>
+                <th>Role</th>
+                <th>Subscription</th>
+                <th>Trial ends</th>
+                <th>Subscription ends</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.map((user) => {
+                const isActive = user.subscriptionStatus === "ACTIVE";
+                const isSaving = savingAccessUserId === user.id;
+                return (
+                  <tr key={user.id}>
+                    <td>{user.name ?? "-"}</td>
+                    <td>{user.phoneNumber}</td>
+                    <td>{user.role}</td>
+                    <td>{user.subscriptionStatus}</td>
+                    <td>{user.trialEndsAt ? new Date(user.trialEndsAt).toLocaleString() : "-"}</td>
+                    <td>{user.subscriptionEndsAt ? new Date(user.subscriptionEndsAt).toLocaleString() : "-"}</td>
+                    <td>
+                      <button
+                        type="button"
+                        className="btn-secondary btn-sm"
+                        disabled={isSaving}
+                        onClick={() => handleToggleAccess(user, !isActive)}
+                      >
+                        {isSaving ? "Saving..." : isActive ? "Deactivate" : "Activate"}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+              {users.length === 0 ? (
+                <tr>
+                  <td colSpan={7}>No users found.</td>
                 </tr>
               ) : null}
             </tbody>
