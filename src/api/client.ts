@@ -4,7 +4,7 @@ export function getApiBaseUrl(): string {
     return env.replace(/\/$/, "");
   }
   throw new Error(
-    "Missing VITE_API_BASE_URL. Copy .env.example to .env and set VITE_API_BASE_URL to your API root (e.g. http://13.205.250.230/api).",
+    "Missing VITE_API_BASE_URL. Copy .env.example to .env and set VITE_API_BASE_URL to your API root.",
   );
 }
 
@@ -55,11 +55,12 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   }
 
   if (!res.ok) {
-    const message =
+    const raw =
       typeof payload?.message === "string" && payload.message
         ? payload.message
         : `Request failed with status ${res.status}`;
-    throw new Error(message);
+    const sanitized = raw.replace(/<[^>]*>/g, "").slice(0, 200);
+    throw new Error(sanitized);
   }
 
   return payload as T;

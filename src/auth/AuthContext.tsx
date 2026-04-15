@@ -85,9 +85,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
+    try { sessionStorage.clear(); } catch { /* ignore */ }
     setToken(null);
     setUser(null);
   }, [token]);
+
+  useEffect(() => {
+    let inactivityTimer: ReturnType<typeof setTimeout>;
+    const INACTIVITY_TIMEOUT = 30 * 60 * 1000;
+
+    const resetTimer = () => {
+      clearTimeout(inactivityTimer);
+      if (token) {
+        inactivityTimer = setTimeout(() => logout(), INACTIVITY_TIMEOUT);
+      }
+    };
+
+    const events = ["mousedown", "keydown", "scroll", "touchstart"] as const;
+    events.forEach((e) => window.addEventListener(e, resetTimer, { passive: true }));
+    resetTimer();
+
+    return () => {
+      clearTimeout(inactivityTimer);
+      events.forEach((e) => window.removeEventListener(e, resetTimer));
+    };
+  }, [token, logout]);
 
   const value = useMemo(
     () => ({
