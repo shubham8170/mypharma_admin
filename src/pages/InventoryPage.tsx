@@ -22,10 +22,9 @@ export function InventoryPage() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
-  const [editValues, setEditValues] = useState<{ price: string; stock: string; reorderLevel: string }>({
+  const [editValues, setEditValues] = useState<{ price: string; stock: string }>({
     price: "",
     stock: "",
-    reorderLevel: "",
   });
   const [createValues, setCreateValues] = useState({
     name: "",
@@ -35,7 +34,6 @@ export function InventoryPage() {
     price: "",
     mrp: "",
     stock: "",
-    reorderLevel: "",
     supplierId: "",
     batchNumber: "",
     expiryDate: "",
@@ -86,7 +84,6 @@ export function InventoryPage() {
         price: Number(createValues.price),
         mrp: Number(createValues.mrp),
         stock: Number(createValues.stock),
-        reorderLevel: Number(createValues.reorderLevel),
         supplierId: createValues.supplierId.trim() || undefined,
         batchNumber: createValues.batchNumber.trim(),
         expiryDate: createValues.expiryDate.trim(),
@@ -101,7 +98,6 @@ export function InventoryPage() {
         price: "",
         mrp: "",
         stock: "",
-        reorderLevel: "",
         supplierId: "",
         batchNumber: "",
         expiryDate: "",
@@ -126,14 +122,13 @@ export function InventoryPage() {
       const payload: Record<string, unknown> = {};
       if (editValues.price !== "") payload.price = Number(editValues.price);
       if (editValues.stock !== "") payload.stock = Number(editValues.stock);
-      if (editValues.reorderLevel !== "") payload.reorderLevel = Number(editValues.reorderLevel);
       if (Object.keys(payload).length === 0) {
         setError("Enter at least one value to update.");
         return;
       }
       await updateMedicine(token, id, payload);
       setEditId(null);
-      setEditValues({ price: "", stock: "", reorderLevel: "" });
+      setEditValues({ price: "", stock: "" });
       setRefreshTick((v) => v + 1);
     } catch (err) {
       if (err instanceof UnauthorizedError) {
@@ -225,7 +220,7 @@ export function InventoryPage() {
                       className="btn-secondary btn-sm"
                       onClick={() => {
                         setEditId(m.id);
-                        setEditValues({ price: String(m.price), stock: String(m.stock), reorderLevel: "" });
+                        setEditValues({ price: String(m.price), stock: String(m.stock) });
                       }}
                     >
                       Edit
@@ -261,16 +256,6 @@ export function InventoryPage() {
                   min="0"
                   value={editValues.stock}
                   onChange={(e) => setEditValues((v) => ({ ...v, stock: e.target.value }))}
-                />
-              </label>
-              <label className="form-row">
-                <span>Reorder level</span>
-                <input
-                  className="input"
-                  type="number"
-                  min="0"
-                  value={editValues.reorderLevel}
-                  onChange={(e) => setEditValues((v) => ({ ...v, reorderLevel: e.target.value }))}
                 />
               </label>
             </div>
@@ -359,17 +344,6 @@ export function InventoryPage() {
                     required
                     value={createValues.stock}
                     onChange={(e) => setCreateValues((v) => ({ ...v, stock: e.target.value }))}
-                  />
-                </label>
-                <label className="form-row">
-                  <span>Reorder level</span>
-                  <input
-                    className="input"
-                    type="number"
-                    min="0"
-                    required
-                    value={createValues.reorderLevel}
-                    onChange={(e) => setCreateValues((v) => ({ ...v, reorderLevel: e.target.value }))}
                   />
                 </label>
                 <label className="form-row">

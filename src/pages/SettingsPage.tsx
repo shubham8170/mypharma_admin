@@ -201,9 +201,12 @@ export function SettingsPage() {
     setSuccess(null);
     try {
       await updateSubscriptionConfig(token, {
+        amountInr: Number(configForm.amountInr),
+        razorpayPlanId: configForm.razorpayPlanId.trim(),
+        billingInterval: configForm.billingInterval,
         trialDays: Number(configForm.trialDays),
       });
-      setSuccess("Subscription fallback config updated.");
+      setSuccess("Subscription config updated.");
       setRefreshTick((v) => v + 1);
     } catch (err) {
       if (err instanceof UnauthorizedError) {
@@ -347,7 +350,7 @@ export function SettingsPage() {
                 className="input"
                 type="number"
                 min="0"
-                disabled
+                required
                 value={configForm.amountInr}
                 onChange={(e) => setConfigForm((v) => ({ ...v, amountInr: e.target.value }))}
               />
@@ -356,7 +359,7 @@ export function SettingsPage() {
               <span>Razorpay Plan ID</span>
               <input
                 className="input"
-                disabled
+                required
                 value={configForm.razorpayPlanId}
                 onChange={(e) => setConfigForm((v) => ({ ...v, razorpayPlanId: e.target.value }))}
               />
@@ -365,7 +368,6 @@ export function SettingsPage() {
               <span>Billing interval</span>
               <select
                 className="select"
-                disabled
                 value={configForm.billingInterval}
                 onChange={(e) =>
                   setConfigForm((v) => ({ ...v, billingInterval: e.target.value as "monthly" | "yearly" }))
@@ -387,7 +389,7 @@ export function SettingsPage() {
               />
             </label>
             <button type="submit" className="btn-primary" disabled={saving}>
-              {saving ? "Saving..." : "Update trial days"}
+              {saving ? "Saving..." : "Update config"}
             </button>
           </form>
         </article>

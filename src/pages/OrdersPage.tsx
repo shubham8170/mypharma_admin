@@ -24,7 +24,6 @@ export function OrdersPage() {
     }>
   >([]);
   const [editOrderId, setEditOrderId] = useState<string | null>(null);
-  const [editPaymentStatus, setEditPaymentStatus] = useState("");
   const [editFulfillmentStatus, setEditFulfillmentStatus] = useState("");
   const [saving, setSaving] = useState(false);
   const [refreshTick, setRefreshTick] = useState(0);
@@ -75,15 +74,13 @@ export function OrdersPage() {
     setError(null);
     try {
       const payload: Record<string, unknown> = {};
-      if (editPaymentStatus) payload.paymentStatus = editPaymentStatus;
       if (editFulfillmentStatus) payload.fulfillmentStatus = editFulfillmentStatus;
       if (Object.keys(payload).length === 0) {
-        setError("Select at least one status field to update.");
+        setError("Select a fulfillment status to update.");
         return;
       }
       await updateOrderStatus(token, orderId, payload);
       setEditOrderId(null);
-      setEditPaymentStatus("");
       setEditFulfillmentStatus("");
       setRefreshTick((v) => v + 1);
     } catch (e) {
@@ -185,7 +182,6 @@ export function OrdersPage() {
                       className="btn-secondary btn-sm"
                       onClick={() => {
                         setEditOrderId(o.id);
-                        setEditPaymentStatus(o.paymentStatus);
                         setEditFulfillmentStatus(o.fulfillmentStatus);
                       }}
                     >
@@ -204,19 +200,6 @@ export function OrdersPage() {
           <div className="modal-card" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
             <h3 className="modal-title">Update order status</h3>
             <div className="modal-grid">
-              <label className="form-row">
-                <span>Payment status</span>
-                <select
-                  className="select"
-                  value={editPaymentStatus}
-                  onChange={(e) => setEditPaymentStatus(e.target.value)}
-                >
-                  <option value="">No change</option>
-                  <option value="PAID">PAID</option>
-                  <option value="PENDING">PENDING</option>
-                  <option value="FAILED">FAILED</option>
-                </select>
-              </label>
               <label className="form-row">
                 <span>Fulfillment status</span>
                 <select
